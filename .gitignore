@@ -1,0 +1,4 @@
+*.csv
+.gitingore
+*.yaml
+__pycache__
