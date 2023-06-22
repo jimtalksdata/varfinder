@@ -11,15 +11,16 @@ class FileLoader:
         self.window = tk.Tk()
         self.window.title("File Loader")
         self.columns_to_show = ["chr", "pos", "ref",
-                                "alt", "classification", "curation"]
-        self.window_width = 1200
+                                "alt", "classification", "curation", "enterDate"]
+        self.window_width = 1400
+        self.max_results_to_show = 10
 
         self.file_path = tk.StringVar()
         self.dataframe = None
 
         self.load_prefs()
         self.create_widgets()
-        self.window.bind('<Control-c>', self.copy_to_clipboard)
+        # self.window.bind('<Control-c>', self.copy_to_clipboard)
 
     def load_prefs(self):
         try:
@@ -54,6 +55,25 @@ class FileLoader:
         self.create_filter_widgets()
         self.create_table()
         self.create_textbox()
+        self.create_status_bar()
+
+    def create_status_bar(self):
+        self.status_var = tk.StringVar()
+        self.status_bar = tk.Label(
+            self.window, textvariable=self.status_var, bd=1, relief=tk.SUNKEN, anchor='w')
+        self.status_bar.grid(row=5, column=0, columnspan=12, sticky='we')
+
+    def refresh_record_count(self):
+        num_rows = len(self.dataframe)
+        self.update_status(f'{num_rows} rows loaded')
+
+    def refresh_filter_results(self, df):
+        num_rows = len(df)
+        self.update_status(
+            f'{num_rows} rows filtered, showing most recent {self.max_results_to_show}')
+
+    def update_status(self, message):
+        self.status_var.set(message)
 
     def copy_to_clipboard(self, event):
         selected_item = self.table.selection()[0]  # get selected item
@@ -126,12 +146,13 @@ class FileLoader:
                 self.table.column(column, width=other_width)
             self.table.heading(column, text=column)
 
-        self.table.grid(row=3, column=0, columnspan=11)
+        self.table.grid(row=3, column=0, columnspan=12, padx=10, pady=10)
         self.table.bind('<<TreeviewSelect>>', self.update_textbox)
 
     def create_textbox(self):
-        self.textbox = tk.Text(self.window, width=150, height=20)
-        self.textbox.grid(row=4, column=0, columnspan=12)
+        self.textbox = tk.Text(self.window, height=10)
+        self.textbox.grid(row=4, column=0, columnspan=12,
+                          padx=20, pady=10, sticky='WE')
         self.textbox.config(state='disabled')  # make the textbox read-only
 
     def update_textbox(self, event):
@@ -142,13 +163,17 @@ class FileLoader:
         curation_value = self.table.set(selected_item, 'curation')
         self.textbox.insert('end', curation_value)  # insert the new value
 
+        self.window.clipboard_clear()  # clear clipboard contents
+        # append new value to clipboard
+        self.window.clipboard_append(curation_value)
+
         # make the textbox read-only again
         self.textbox.config(state='disabled')
 
     def update_table(self, df):
         for i in self.table.get_children():
             self.table.delete(i)
-        df = df[self.columns_to_show].head(10)
+        df = df[self.columns_to_show].head(self.max_results_to_show)
         for index, row in df.iterrows():
             self.table.insert('', 'end', values=tuple(row))
 
@@ -161,11 +186,14 @@ class FileLoader:
         if self.file_path.get():
             self.dataframe = pd.read_csv(self.file_path.get(), sep=',')
             self.dataframe = self.dataframe.fillna("")
+            self.refresh_record_count()
             print("File loaded successfully into DataFrame.")
         else:
             print("No file selected.")
 
     def filter_data(self):
+        if self.dataframe is None and self.file_path.get() is not None:
+            self.load_file()
         if self.dataframe is not None:
             df_filtered = self.dataframe
 
@@ -178,6 +206,9 @@ class FileLoader:
             from_date_filter = self.from_date.get_date()
             to_date_filter = self.to_date.get_date()
             curation_filter = self.curation_entry.get().lower()
+
+            # split curation filter into a list and search each term separately, delimited by space
+            curation_filter_list = curation_filter.split()
 
             # change from date to datetime64
             from_date_filter = datetime.datetime.combine(
@@ -201,8 +232,9 @@ class FileLoader:
                 df_filtered = df_filtered[df_filtered['somatic']
                                           == somatic_filter]
             if curation_filter:
-                df_filtered = df_filtered[df_filtered['curation'].str.lower(
-                ).str.contains(curation_filter)]
+                for term in curation_filter_list:
+                    df_filtered = df_filtered[df_filtered['curation'].str.lower(
+                    ).str.contains(term)]
 
             df_filtered = df_filtered[(pd.to_datetime(df_filtered['enterDate']) >= from_date_filter) &
                                       (pd.to_datetime(df_filtered['enterDate']) <= to_date_filter)]
@@ -211,6 +243,7 @@ class FileLoader:
             df_filtered = df_filtered.sort_values(
                 by=['enterDate'], ascending=False)
 
+            self.refresh_filter_results(df_filtered)
             self.update_table(df_filtered)
 
     def run(self):
