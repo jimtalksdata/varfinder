@@ -9,7 +9,7 @@ import yaml
 class FileLoader:
     def __init__(self):
         self.window = tk.Tk()
-        self.window.title("File Loader")
+        self.window.title("VarFinder")
         self.columns_to_show = ["chr", "pos", "ref",
                                 "alt", "classification", "curation", "enterDate"]
         self.window_width = 1400
@@ -20,6 +20,8 @@ class FileLoader:
 
         self.load_prefs()
         self.create_widgets()
+        # bind enter to filter button
+        self.window.bind('<Return>', lambda event=None: self.filter_button.invoke())
         # self.window.bind('<Control-c>', self.copy_to_clipboard)
 
     def load_prefs(self):
@@ -49,8 +51,12 @@ class FileLoader:
         self.browse_button.grid(row=0, column=2, padx=10)
 
         self.load_button = tk.Button(
-            self.window, text='Load', command=self.load_file)
+            self.window, text='Reload CSV', command=self.load_file)
         self.load_button.grid(row=0, column=3, padx=10)
+
+        self.filter_button = tk.Button(
+            self.window, text='Filter (Enter)', command=self.filter_data)
+        self.filter_button.grid(row=0, column=4, padx=10)
 
         self.create_filter_widgets()
         self.create_table()
@@ -126,10 +132,6 @@ class FileLoader:
         self.to_date = DateEntry(self.window)
         self.to_date.grid(row=2, column=5)
 
-        self.filter_button = tk.Button(
-            self.window, text='Filter', command=self.filter_data)
-        self.filter_button.grid(row=2, column=6, padx=10)
-
     def create_table(self):
         self.table = ttk.Treeview(self.window)
         self.table["columns"] = self.columns_to_show
@@ -181,6 +183,7 @@ class FileLoader:
         file_name = filedialog.askopenfilename(
             filetypes=[("CSV files", "*.csv")])
         self.file_path.set(file_name)
+        self.load_file()
 
     def load_file(self):
         if self.file_path.get():
