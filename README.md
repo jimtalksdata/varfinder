@@ -1,5 +1,5 @@
 # varfinder
-*Local variant annotation search for pathologists*
+*Local variant annotation and interpretation search for pathologists*
 
 ## How to use:
 - Install all requirements in a local python environment with pip.
