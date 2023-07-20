@@ -30,6 +30,10 @@ class FileLoader:
                 prefs = yaml.safe_load(f)
                 if 'file_path' in prefs:
                     self.file_path.set(prefs['file_path'])
+                if 'window_width' in prefs:
+                    self.window_width = prefs['window_width']
+                if 'max_results_to_show' in prefs:
+                    self.max_results_to_show = prefs['max_results_to_show']
         except FileNotFoundError:
             pass  # It's okay if the file doesn't exist
 
@@ -67,7 +71,7 @@ class FileLoader:
         self.status_var = tk.StringVar()
         self.status_bar = tk.Label(
             self.window, textvariable=self.status_var, bd=1, relief=tk.SUNKEN, anchor='w')
-        self.status_bar.grid(row=5, column=0, columnspan=12, sticky='we')
+        self.status_bar.grid(row=5, column=0, columnspan=12, sticky='wes')
 
     def refresh_record_count(self):
         num_rows = len(self.dataframe)
@@ -202,8 +206,8 @@ class FileLoader:
 
             chr_filter = self.chr_entry.get()
             pos_filter = self.pos_entry.get()
-            ref_filter = self.ref_entry.get()
-            alt_filter = self.alt_entry.get()
+            ref_filter = self.ref_entry.get().upper()
+            alt_filter = self.alt_entry.get().upper()
             classification_filter = self.classification_combobox.get()
             somatic_filter = self.somatic_combobox.get()
             from_date_filter = self.from_date.get_date()
